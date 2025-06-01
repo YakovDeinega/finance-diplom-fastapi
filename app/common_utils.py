@@ -3,13 +3,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from datetime import date
-from moexalgo import session, Ticker
 from keras import layers
 import keras
-
-import tensorflow as tf
-
-from app.config import settings
 
 
 def create_df(stock, per):
@@ -37,37 +32,16 @@ def create_dataset(data, time_steps=20):
     for i in range(len(data) - time_steps):
         X.append(data[i:(i + time_steps)])
         y.append(data[i + time_steps])
-    print(np.array(X))
-    print(np.array(y))
     return np.array(X), np.array(y)
 
 
-def train_model(ticker):
-    # Подготовка данных
-    session.TOKEN = settings.MOEX_SERVICE_TOKEN
-    s = create_df(Ticker(ticker), '1h')
-    tmp = s.copy()
-    tmp.index = pd.to_datetime(tmp.end)
-    tmp = tmp['close']
-    X, y = create_dataset(tmp)
-    X = X.reshape((X.shape[0], X.shape[1], 1))
-
-    X_train, y_train = X[:30000], y[:30000]
-    X_test, y_test = X[30000:], y[30000:]
-
-    early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
-    model_checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath=f'{ticker}_model.keras', save_best_only=True)
-
-    # Создание и обучение модели
-    model_lstm = create_model((X_train.shape[1], X_train.shape[2]))
-    hist = model_lstm.fit(X_train, y_train, epochs=20, batch_size=128, callbacks=[early_stopping, model_checkpoint],
-                          validation_data=(X_test, y_test))
-
-
 def predict_cost(data, ticker):
-    model_path = Path(f'{ticker}_model.keras')
+    from app.tasks import train_model
+
+    model_path = Path(f'keras_models/{ticker}_model.keras')
     if not model_path.exists():
-        train_model(ticker)
+        train_model.delay(ticker)
+        return []
 
     loaded_model = keras.models.load_model(str(model_path))
 

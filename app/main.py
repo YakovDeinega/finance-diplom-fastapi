@@ -1,11 +1,10 @@
-import datetime
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.params import Path
 from pydantic import BaseModel
 
-from app.common_utils import train_model, predict_cost
+from app.common_utils import predict_cost
 from app.config import settings
 import logging
 
@@ -38,8 +37,13 @@ class TickerCandles(BaseModel):
 async def predict_for_action(request: Request, data: TickerCandles, ticker: str = Path(description="Тикер акции (например: AAPL)")) -> list[float]:
     """Предсказать цены закрытия свечей на следующие 20 часов."""
     token = request.headers.get("Authorization")
+
     if token != f'Bearer {settings.API_TOKEN}':
         raise HTTPException(status_code=403, detail="Forbidden")
+
     prediction = predict_cost(data.data, ticker)
-    print(prediction)
+
+    if not prediction:
+        raise HTTPException(status_code=400, detail='Ошибки на стороне сервиса, попробуйте позже')
+
     return prediction
