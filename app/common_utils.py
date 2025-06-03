@@ -38,7 +38,7 @@ def create_dataset(data, time_steps=20):
 def predict_cost(data, ticker):
     from app.tasks import train_model
 
-    model_path = Path(f'keras_models/{ticker}_model.keras')
+    model_path = Path(f'/app/keras_models/{ticker}_model.keras')
     if not model_path.exists():
         train_model.delay(ticker)
         return []
